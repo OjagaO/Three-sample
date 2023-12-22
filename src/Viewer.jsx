@@ -4,6 +4,8 @@ import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader";
 import { AmbientLight, PointLight } from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls";
+import { HTML5Backend } from "react-dnd-html5-backend";
+import { DndProvider } from "react-dnd";
 
 const Viewer = () => {
     useEffect(() => {
@@ -45,9 +47,9 @@ const Viewer = () => {
                 reader.onload = (event) => resolve(event.target.result);
                 reader.onerror = (error) => reject(error);
 
-                if (file.name.endsWith(".gltf")) {
+                if (file.name.endsWith(".gltf") || file.name.endsWith(".glb")) {
                     reader.readAsText(file);
-                } else if (file.name.endsWith(".bin") || file.type.startsWith("textures/")) {
+                } else if (file.name.endsWith(".bin") || file.type.startsWith("image/")) {
                     reader.readAsArrayBuffer(file);
                 }
             });
@@ -100,17 +102,14 @@ const Viewer = () => {
                     gltfData.images.forEach((image) => {
                         if (image.uri) {
                             console.log(image);
-                            const textureFileName = image.uri;
-
-
-
-
-                            const textureDataUrl = textureDataMap.get(textureFileName);
-                            console.log(textureDataUrl);
-                            if (textureDataUrl) {
-                                image.uri = textureDataUrl;
-                            } else {
-                                console.error("Texture file not found in map:", textureFileName);
+                            if (image.uri) {
+                                const textureFileName = image.uri.split("/").pop();
+                                const textureDataUrl = textureDataMap.get(textureFileName);
+                                if (textureDataUrl) {
+                                    image.uri = textureDataUrl;
+                                } else {
+                                    console.error("Texture file not found:", textureFileName);
+                                }
                             }
                         }
                     });
@@ -119,7 +118,7 @@ const Viewer = () => {
                         // ロードされたGLTFモデルを取得
                         const loadedModel = gltf.scene;
 
-                        // モデルの位置、スケール、回転などを調整（必要に応じて変更してください）
+                        // モデルの位置、スケール、回転などを調整
                         loadedModel.position.set(0, 0, 0);
                         loadedModel.scale.set(1, 1, 1);
                         loadedModel.rotation.set(0, 0, 0);
@@ -148,12 +147,10 @@ const Viewer = () => {
             }
         };
 
-        // ファイルドラッグ時のハンドラ（デフォルトの挙動を無効にする）
         const onDragOver = (event) => {
             event.preventDefault();
         };
 
-        // ファイルドロップ時のハンドラ
         const onDrop = async (event) => {
             event.preventDefault();
             const fileMap = new Map();
@@ -182,7 +179,10 @@ const Viewer = () => {
 
     return (
         <>
-            <canvas id="canvas"></canvas>;
+            <DndProvider backend={HTML5Backend}>
+                <p>|* Your Drag-and-Drop Application *|</p>
+                <canvas id="canvas"></canvas>
+            </DndProvider>
         </>
     );
 };
