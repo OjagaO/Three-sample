@@ -22,6 +22,13 @@ p {
   padding: 0px;
   border: 2px dashed #ccc;
   cursor: pointer;
-  width: 50%;
-  height: 50%;
+  box-sizing: border-box;
+}
+
+#input_area {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: white;
 }

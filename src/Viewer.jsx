@@ -4,8 +4,6 @@ import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader";
 import { AmbientLight, PointLight } from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls";
-import { HTML5Backend } from "react-dnd-html5-backend";
-import { DndProvider } from "react-dnd";
 
 const Viewer = () => {
     useEffect(() => {
@@ -17,7 +15,7 @@ const Viewer = () => {
 
         // camera
         const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-        camera.position.set(0, 1, 4);
+        camera.position.set(0, 1, 3);
 
         // renderer
         const renderer = new THREE.WebGLRenderer({
@@ -37,22 +35,32 @@ const Viewer = () => {
         // gltfLoader
         const gltfLoader = new GLTFLoader();
 
+        let mixer;
+
         // OrbitControls（ユーザー側のアクションを受け付ける）
         const controls = new OrbitControls(camera, renderer.domElement);
 
-        // ファイルごとに合わせた読み込み
+        // ファイルごとに合わせた読み込み(適切な変換を行うイメージ)
         const loadFile = (file) => {
             return new Promise((resolve, reject) => {
                 const reader = new FileReader();
                 reader.onload = (event) => resolve(event.target.result);
                 reader.onerror = (error) => reject(error);
 
-                if (file.name.endsWith(".gltf") || file.name.endsWith(".glb")) {
+                if (file.name.endsWith(".gltf")) {
                     reader.readAsText(file);
-                } else if (file.name.endsWith(".bin") || file.type.startsWith("image/")) {
+                } else if (file.name.endsWith(".bin") || file.type.startsWith("image/") || file.name.endsWith(".glb")) {
                     reader.readAsArrayBuffer(file);
                 }
             });
+        };
+
+        const tick = () => {
+            renderer.render(scene, camera);
+            if (mixer) {
+                mixer.update(0.01);
+            }
+            requestAnimationFrame(tick);
         };
 
         const loadModel = async (fileMap) => {
@@ -64,22 +72,63 @@ const Viewer = () => {
                 for (let [fileName, file] of fileMap.entries()) {
                     try {
                         if (fileName.endsWith(".gltf")) {
-                            console.log("gltf");
                             const fileData = await loadFile(file);
                             gltfData = JSON.parse(fileData);
                         } else if (fileName.endsWith(".bin")) {
-                            console.log("bin");
                             // .binファイルの読み込みとURLの生成
                             const buffer = await loadFile(file);
                             const blob = new Blob([buffer], { type: "application/octet-stream" });
                             const binDataUrl = URL.createObjectURL(blob);
                             binDataMap.set(fileName, binDataUrl);
                         } else if (file.type.startsWith("image/")) {
-                            console.log("image");
-                            // 画像ファイルの読み込みとDataURLの生成
-                            const dataUrl = await loadFile(file);
-                            const textureFileName = fileName.split("/").pop(); // パスからファイル名を抽出
-                            textureDataMap.set(textureFileName, dataUrl); // 修正: ファイル名をキーとして使用
+                            // 画像ファイルの読み込みとURLの生成
+                            const buffer = await loadFile(file);
+                            const blob = new Blob([buffer], { type: file.type });
+                            const imageDataUrl = URL.createObjectURL(blob);
+                            textureDataMap.set(fileName, imageDataUrl);
+                        } else if (fileName.endsWith(".glb")) {
+                            // gblファイルはjson.parseしないのでそのまま処理
+                            const arrayBuffer = await loadFile(file);
+                            gltfLoader.parse(
+                                arrayBuffer,
+                                "",
+                                (glb) => {
+                                    const loadedModel = glb.scene;
+
+                                    // モデルのバウンディングボックスを計算
+                                    const box = new THREE.Box3().setFromObject(loadedModel);
+                                    const size = box.getSize(new THREE.Vector3());
+
+                                    // スケールを調整
+                                    const desiredHeight = 1; // 目的の高さ
+                                    const scale = desiredHeight / size.y;
+                                    loadedModel.scale.set(scale, scale, scale);
+
+                                    // モデルの位置を調整（例：原点に配置）
+                                    loadedModel.position.set(0, 0, 0);
+
+                                    // Three.jsのシーンにモデルを追加
+                                    scene.add(loadedModel);
+
+                                    // 描画ループを更新（アニメーションがある場合）
+                                    const animate = () => {
+                                        // モデルのアニメーションや操作
+                                        if (loadedModel) {
+                                            loadedModel.rotation.y += 0.005;
+                                        }
+
+                                        controls.update();
+                                        renderer.render(scene, camera);
+
+                                        requestAnimationFrame(animate);
+                                    };
+
+                                    animate();
+                                },
+                                () => {
+                                    tick();
+                                }
+                            );
                         }
                     } catch (innerError) {
                         console.error(`Error loading file ${fileName}:`, innerError);
@@ -90,7 +139,6 @@ const Viewer = () => {
                     // .binファイルの参照をGLTFファイル内で更新
                     gltfData.buffers.forEach((buffer) => {
                         if (buffer.uri) {
-                            console.log(buffer);
                             const binDataUrl = binDataMap.get(buffer.uri);
                             if (binDataUrl) {
                                 buffer.uri = binDataUrl;
@@ -101,46 +149,61 @@ const Viewer = () => {
                     // 画像ファイルの参照をGLTFファイル内で更新
                     gltfData.images.forEach((image) => {
                         if (image.uri) {
-                            console.log(image);
-                            if (image.uri) {
-                                const textureFileName = image.uri.split("/").pop();
-                                const textureDataUrl = textureDataMap.get(textureFileName);
-                                if (textureDataUrl) {
-                                    image.uri = textureDataUrl;
-                                } else {
-                                    console.error("Texture file not found:", textureFileName);
-                                }
+                            const textureFileName = image.uri.split("/").pop();
+                            const textureDataUrl = textureDataMap.get(textureFileName);
+                            if (textureDataUrl) {
+                                image.uri = textureDataUrl;
+                            } else {
+                                console.error("Texture file not found in map:", textureFileName);
                             }
                         }
                     });
 
-                    gltfLoader.parse(JSON.stringify(gltfData), "", (gltf) => {
-                        // ロードされたGLTFモデルを取得
-                        const loadedModel = gltf.scene;
+                    gltfLoader.parse(
+                        JSON.stringify(gltfData),
+                        "",
+                        (gltf) => {
+                            // ロードされたGLTFモデルを取得
+                            const loadedModel = gltf.scene;
 
-                        // モデルの位置、スケール、回転などを調整
-                        loadedModel.position.set(0, 0, 0);
-                        loadedModel.scale.set(1, 1, 1);
-                        loadedModel.rotation.set(0, 0, 0);
+                            // モデルのバウンディングボックスを計算
+                            const box = new THREE.Box3().setFromObject(loadedModel);
+                            const size = box.getSize(new THREE.Vector3());
 
-                        // Three.jsのシーンにモデルを追加
-                        scene.add(loadedModel);
-
-                        // 描画ループを更新（アニメーションがある場合）
-                        const animate = () => {
-                            requestAnimationFrame(animate);
-
-                            if (loadedModel) {
-                                loadedModel.rotation.y += 0.01;
+                            // スケールを調整
+                            const desiredHeight = 1; // 目的の高さ
+                            console.log(size);
+                            while (size.y < 1) {
+                                size.y *= 10;
                             }
+                            console.log(size.y);
+                            const scale = desiredHeight / size.y;
+                            loadedModel.scale.set(scale, scale, scale);
 
-                            controls.update();
+                            // モデルの位置を調整（原点に配置）
+                            loadedModel.position.set(0, 0, 0);
 
-                            renderer.render(scene, camera);
-                        };
+                            // Three.jsのシーンにモデルを追加
+                            scene.add(loadedModel);
 
-                        animate();
-                    });
+                            // 描画ループを更新（アニメーションがある場合）
+                            const animate = () => {
+                                requestAnimationFrame(animate);
+
+                                if (loadedModel) {
+                                    loadedModel.rotation.y += 0.005;
+                                }
+
+                                controls.update();
+                                renderer.render(scene, camera);
+                            };
+
+                            animate();
+                        },
+                        () => {
+                            tick();
+                        }
+                    );
                 }
             } catch (error) {
                 console.error("Error loading model: ", error);
@@ -151,38 +214,74 @@ const Viewer = () => {
             event.preventDefault();
         };
 
+        const processEntry = async (entry, fileMap) => {
+            if (entry.isFile) {
+                return new Promise((resolve, reject) => {
+                    entry.file((file) => {
+                        fileMap.set(file.name, file);
+                        resolve();
+                    }, reject);
+                });
+            } else if (entry.isDirectory) {
+                const reader = entry.createReader();
+                return new Promise((resolve, reject) => {
+                    const readEntries = () => {
+                        reader.readEntries(async (entries) => {
+                            if (entries.length) {
+                                const promises = [];
+                                for (const ent of entries) {
+                                    promises.push(processEntry(ent, fileMap));
+                                }
+                                await Promise.all(promises);
+                                readEntries(); // 再帰的にディレクトリの内容を読み込む
+                            } else {
+                                resolve(); // ディレクトリの読み込み完了
+                            }
+                        }, reject);
+                    };
+                    readEntries();
+                });
+            }
+        };
+
         const onDrop = async (event) => {
             event.preventDefault();
             const fileMap = new Map();
 
-            if (event.dataTransfer.items) {
-                const files = Array.from(event.dataTransfer.items)
-                    .filter((item) => item.kind === "file")
-                    .map((item) => item.getAsFile());
-
-                files.forEach((file) => fileMap.set(file.name, file));
-
-                await loadModel(fileMap);
+            const items = event.dataTransfer.items;
+            const promises = [];
+            for (const item of items) {
+                if (item.kind === "file") {
+                    const entry = item.webkitGetAsEntry();
+                    if (entry) {
+                        promises.push(processEntry(entry, fileMap));
+                    }
+                }
             }
+
+            await Promise.all(promises);
+            await loadModel(fileMap);
+
+            const inputArea = document.getElementById("input_area");
+            inputArea.style.display = "none";
         };
 
         // イベントリスナーを追加
-        document.addEventListener("drop", onDrop);
-        document.addEventListener("dragover", onDragOver);
+        const inputCanvas = document.getElementById("canvas");
+        inputCanvas.addEventListener("drop", onDrop);
+        inputCanvas.addEventListener("dragover", onDragOver);
 
         // クリーンアップ関数
         return () => {
-            document.removeEventListener("drop", onDrop);
-            document.removeEventListener("dragover", onDragOver);
+            inputCanvas.removeEventListener("drop", onDrop);
+            inputCanvas.removeEventListener("dragover", onDragOver);
         };
     }, []);
 
     return (
         <>
-            <DndProvider backend={HTML5Backend}>
-                <p>|* Your Drag-and-Drop Application *|</p>
-                <canvas id="canvas"></canvas>
-            </DndProvider>
+            <div id="input_area">このエリアにファイルまたはフォルダをドラッグ&ドロップしてください</div>
+            <canvas id="canvas"></canvas>
         </>
     );
 };
