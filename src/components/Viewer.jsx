@@ -1,20 +1,34 @@
 // src/Viewer.js
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader";
 import { AmbientLight, PointLight } from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls";
 
 const Viewer = () => {
+    const [windowSize, setWindowSize] = useState({
+        width: window.innerWidth,
+        height: window.innerHeight,
+    });
+
     useEffect(() => {
         const canvas = document.getElementById("canvas");
-        // let model;
+
+        // 画面幅の変更に合わせる
+        const handleResize = () => {
+            setWindowSize({
+                width: window.innerWidth,
+                height: window.innerHeight / 2,
+            });
+        };
+
+        window.addEventListener("resize", handleResize);
 
         // scene
         const scene = new THREE.Scene();
 
         // camera
-        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const camera = new THREE.PerspectiveCamera(75, windowSize.width / windowSize.height, 0.1, 1000);
         camera.position.set(0, 1, 3);
 
         // renderer
@@ -23,7 +37,7 @@ const Viewer = () => {
             antialias: false,
             alpha: true,
         });
-        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setSize(windowSize.width, windowSize.height);
         renderer.setPixelRatio(window.devicePixelRatio);
 
         // light
@@ -34,8 +48,6 @@ const Viewer = () => {
 
         // gltfLoader
         const gltfLoader = new GLTFLoader();
-
-        let mixer;
 
         // OrbitControls（ユーザー側のアクションを受け付ける）
         const controls = new OrbitControls(camera, renderer.domElement);
@@ -53,14 +65,6 @@ const Viewer = () => {
                     reader.readAsArrayBuffer(file);
                 }
             });
-        };
-
-        const tick = () => {
-            renderer.render(scene, camera);
-            if (mixer) {
-                mixer.update(0.01);
-            }
-            requestAnimationFrame(tick);
         };
 
         const loadModel = async (fileMap) => {
@@ -89,46 +93,56 @@ const Viewer = () => {
                         } else if (fileName.endsWith(".glb")) {
                             // gblファイルはjson.parseしないのでそのまま処理
                             const arrayBuffer = await loadFile(file);
-                            gltfLoader.parse(
-                                arrayBuffer,
-                                "",
-                                (glb) => {
-                                    const loadedModel = glb.scene;
+                            gltfLoader.parse(arrayBuffer, "", (glb) => {
+                                const loadedModel = glb.scene;
 
-                                    // モデルのバウンディングボックスを計算
-                                    const box = new THREE.Box3().setFromObject(loadedModel);
-                                    const size = box.getSize(new THREE.Vector3());
+                                // アニメーションミキサーの作成
+                                const mixer = new THREE.AnimationMixer(loadedModel);
 
-                                    // スケールを調整
-                                    const desiredHeight = 1; // 目的の高さ
-                                    const scale = desiredHeight / size.y;
-                                    loadedModel.scale.set(scale, scale, scale);
+                                // GLTFに含まれるすべてのアニメーションをミキサーに追加
+                                glb.animations.forEach((clip) => {
+                                    mixer.clipAction(clip).play();
+                                });
 
-                                    // モデルの位置を調整（例：原点に配置）
-                                    loadedModel.position.set(0, 0, 0);
+                                // モデルのバウンディングボックスを計算
+                                const box = new THREE.Box3().setFromObject(loadedModel);
+                                const size = box.getSize(new THREE.Vector3());
 
-                                    // Three.jsのシーンにモデルを追加
-                                    scene.add(loadedModel);
-
-                                    // 描画ループを更新（アニメーションがある場合）
-                                    const animate = () => {
-                                        // モデルのアニメーションや操作
-                                        if (loadedModel) {
-                                            loadedModel.rotation.y += 0.005;
-                                        }
-
-                                        controls.update();
-                                        renderer.render(scene, camera);
-
-                                        requestAnimationFrame(animate);
-                                    };
-
-                                    animate();
-                                },
-                                () => {
-                                    tick();
+                                // スケールを調整
+                                const desiredHeight = 1; // 目的の高さ
+                                while (size.y < 0.5) {
+                                    size.y *= 10;
                                 }
-                            );
+                                const scale = desiredHeight / size.y;
+                                loadedModel.scale.set(scale, scale, scale);
+
+                                // モデルの位置を調整（例：原点に配置）
+                                loadedModel.position.set(0, 0, 0);
+
+                                // Three.jsのシーンにモデルを追加
+                                scene.add(loadedModel);
+
+                                // 時間の追跡用
+                                let previousTime = 0;
+
+                                // 描画ループを更新
+                                const animate = (time) => {
+                                    requestAnimationFrame(animate);
+
+                                    const deltaTime = (time - previousTime) / 1000; // 秒単位に変換
+                                    mixer.update(deltaTime); // アニメーションの更新
+                                    previousTime = time;
+
+                                    if (loadedModel) {
+                                        loadedModel.rotation.y += 0.001;
+                                    }
+
+                                    controls.update();
+                                    renderer.render(scene, camera);
+                                };
+
+                               requestAnimationFrame(animate);
+                            });
                         }
                     } catch (innerError) {
                         console.error(`Error loading file ${fileName}:`, innerError);
@@ -159,51 +173,57 @@ const Viewer = () => {
                         }
                     });
 
-                    gltfLoader.parse(
-                        JSON.stringify(gltfData),
-                        "",
-                        (gltf) => {
-                            // ロードされたGLTFモデルを取得
-                            const loadedModel = gltf.scene;
+                    gltfLoader.parse(JSON.stringify(gltfData), "", (gltf) => {
+                        // ロードされたGLTFモデルを取得
+                        const loadedModel = gltf.scene;
 
-                            // モデルのバウンディングボックスを計算
-                            const box = new THREE.Box3().setFromObject(loadedModel);
-                            const size = box.getSize(new THREE.Vector3());
+                        // アニメーションミキサーの作成
+                        const mixer = new THREE.AnimationMixer(loadedModel);
 
-                            // スケールを調整
-                            const desiredHeight = 1; // 目的の高さ
-                            console.log(size);
-                            while (size.y < 1) {
-                                size.y *= 10;
-                            }
-                            console.log(size.y);
-                            const scale = desiredHeight / size.y;
-                            loadedModel.scale.set(scale, scale, scale);
+                        // GLTFに含まれるすべてのアニメーションをミキサーに追加
+                        gltf.animations.forEach((clip) => {
+                            mixer.clipAction(clip).play();
+                        });
 
-                            // モデルの位置を調整（原点に配置）
-                            loadedModel.position.set(0, 0, 0);
+                        // モデルのバウンディングボックスを計算
+                        const box = new THREE.Box3().setFromObject(loadedModel);
+                        const size = box.getSize(new THREE.Vector3());
 
-                            // Three.jsのシーンにモデルを追加
-                            scene.add(loadedModel);
-
-                            // 描画ループを更新（アニメーションがある場合）
-                            const animate = () => {
-                                requestAnimationFrame(animate);
-
-                                if (loadedModel) {
-                                    loadedModel.rotation.y += 0.005;
-                                }
-
-                                controls.update();
-                                renderer.render(scene, camera);
-                            };
-
-                            animate();
-                        },
-                        () => {
-                            tick();
+                        // スケールを調整
+                        const desiredHeight = 1.2; // 目的の高さ
+                        while (size.y < 0.5) {
+                            size.y *= 10;
                         }
-                    );
+                        const scale = desiredHeight / size.y;
+                        loadedModel.scale.set(scale, scale, scale);
+
+                        // モデルの位置を調整（原点に配置）
+                        loadedModel.position.set(0, 0, 0);
+
+                        // Three.jsのシーンにモデルを追加
+                        scene.add(loadedModel);
+
+                        // 時間の追跡用
+                        let previousTime = 0;
+
+                        // 描画ループを更新（アニメーションがある場合）
+                        const animate = (time) => {
+                            requestAnimationFrame(animate);
+
+                            const deltaTime = (time - previousTime) / 1000; // 秒単位に変換
+                            mixer.update(deltaTime); // アニメーションの更新
+                            previousTime = time;
+
+                            if (loadedModel) {
+                                loadedModel.rotation.y += 0.001;
+                            }
+
+                            controls.update();
+                            renderer.render(scene, camera);
+                        };
+
+                        requestAnimationFrame(animate);
+                    });
                 }
             } catch (error) {
                 console.error("Error loading model: ", error);
@@ -276,7 +296,7 @@ const Viewer = () => {
             inputCanvas.removeEventListener("drop", onDrop);
             inputCanvas.removeEventListener("dragover", onDragOver);
         };
-    }, []);
+    }, [windowSize.height, windowSize.width]);
 
     return (
         <>
