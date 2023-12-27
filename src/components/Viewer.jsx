@@ -1,11 +1,15 @@
 // src/Viewer.js
-import { useEffect, useState } from "react";
+import { useContext, useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader";
 import { AmbientLight, PointLight } from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls";
+import { ModelContext } from "../contexts/ModelContext";
 
 const Viewer = () => {
+    // Contextを使用したpropsの受け取り
+    const { rotationSpeed, setRotationSpeed, position, setPosition } = useContext(ModelContext);
+
     const [windowSize, setWindowSize] = useState({
         width: window.innerWidth,
         height: window.innerHeight,
@@ -18,7 +22,7 @@ const Viewer = () => {
         const handleResize = () => {
             setWindowSize({
                 width: window.innerWidth,
-                height: window.innerHeight / 2,
+                height: window.innerHeight,
             });
         };
 
@@ -117,7 +121,10 @@ const Viewer = () => {
                                 loadedModel.scale.set(scale, scale, scale);
 
                                 // モデルの位置を調整（例：原点に配置）
-                                loadedModel.position.set(0, 0, 0);
+                                setTimeout(() => {
+                                    console.log(rotationSpeed);
+                                }, 3000);
+                                loadedModel.position.set(position.x, position.y, 0);
 
                                 // Three.jsのシーンにモデルを追加
                                 scene.add(loadedModel);
@@ -129,19 +136,21 @@ const Viewer = () => {
                                 const animate = (time) => {
                                     requestAnimationFrame(animate);
 
+                                    console.log(rotationSpeed);
+
                                     const deltaTime = (time - previousTime) / 1000; // 秒単位に変換
                                     mixer.update(deltaTime); // アニメーションの更新
                                     previousTime = time;
 
                                     if (loadedModel) {
-                                        loadedModel.rotation.y += 0.001;
+                                        loadedModel.rotation.y += rotationSpeed;
                                     }
 
                                     controls.update();
                                     renderer.render(scene, camera);
                                 };
 
-                               requestAnimationFrame(animate);
+                                requestAnimationFrame(animate);
                             });
                         }
                     } catch (innerError) {
@@ -296,7 +305,7 @@ const Viewer = () => {
             inputCanvas.removeEventListener("drop", onDrop);
             inputCanvas.removeEventListener("dragover", onDragOver);
         };
-    }, [windowSize.height, windowSize.width]);
+    }, [windowSize.height, windowSize.width, position.x, position.y, rotationSpeed]);
 
     return (
         <>

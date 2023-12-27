@@ -1,14 +1,18 @@
-import "./App.css"
-import Gui from "./components/Gui";
+import React from 'react';
+import { ModelProvider } from './contexts/ModelContext';
+import Gui from './components/Gui';
 import Viewer from './components/Viewer';
+import "./App.css"
 
 const App = () => {
-  return (
-    <div className="App">
-      <Gui />
-      <Viewer />
-    </div>
-  )
-}
+    return (
+        <ModelProvider>
+            <div className="App">
+                <Gui />
+                <Viewer />
+            </div>
+        </ModelProvider>
+    );
+};
 
-export default App
+export default App;
