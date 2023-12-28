@@ -4,6 +4,8 @@ import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader";
 import { AmbientLight, PointLight } from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls";
+import { RGBELoader } from 'three/examples/jsm/loaders/RGBELoader';
+import * as lil from "lil-gui";
 
 const Viewer = () => {
     const [windowSize, setWindowSize] = useState({
@@ -18,7 +20,7 @@ const Viewer = () => {
         const handleResize = () => {
             setWindowSize({
                 width: window.innerWidth,
-                height: window.innerHeight / 2,
+                height: window.innerHeight,
             });
         };
 
@@ -26,6 +28,15 @@ const Viewer = () => {
 
         // scene
         const scene = new THREE.Scene();
+
+        const rgbeLoader = new RGBELoader();
+        console.log("rgbeLoader  new!!")
+        rgbeLoader.load("models/bg_sky.pic", (texture) => {
+            console.log("rgbeLoader  load!!")
+            texture.mapping = THREE.EquirectangularReflectionMapping;
+            scene.background = texture;
+            scene.environment = texture;
+        });
 
         // camera
         const camera = new THREE.PerspectiveCamera(75, windowSize.width / windowSize.height, 0.1, 1000);
@@ -43,7 +54,7 @@ const Viewer = () => {
         // light
         const ambientLight = new AmbientLight(0xffffff, 3);
         scene.add(ambientLight);
-        const pointLight = new PointLight(0xffffff, 2, 100);
+        const pointLight = new PointLight(0xffffff, 10, 100);
         scene.add(pointLight);
 
         // gltfLoader
@@ -99,9 +110,29 @@ const Viewer = () => {
                                 // アニメーションミキサーの作成
                                 const mixer = new THREE.AnimationMixer(loadedModel);
 
-                                // GLTFに含まれるすべてのアニメーションをミキサーに追加
-                                glb.animations.forEach((clip) => {
-                                    mixer.clipAction(clip).play();
+                                // lilGUIのインスタンス化
+                                const gui = new lil.GUI();
+
+                                const params = {
+                                    rotationSpeed: 0.005,
+                                    x: 0,
+                                    y: 0,
+                                    z: 0,
+                                };
+
+                                gui.add(params, "rotationSpeed", 0, 0.1);
+                                gui.add(params, "x", -1, 1);
+                                gui.add(params, "y", -1, 1);
+                                gui.add(params, "z", -1, 1);
+
+                                // GLBに含まれるすべてのアニメーションをミキサーに追加
+                                const animationFolder = gui.addFolder("Animations");
+                                glb.animations.forEach((clip, index) => {
+                                    const action = mixer.clipAction(clip);
+                                    animationFolder.add({ [`Animation ${index}`]: false }, `Animation ${index}`).onChange((play) => {
+                                        // アニメーションの再生/停止
+                                        play ? action.play() : action.stop();
+                                    });
                                 });
 
                                 // モデルのバウンディングボックスを計算
@@ -116,8 +147,7 @@ const Viewer = () => {
                                 const scale = desiredHeight / size.y;
                                 loadedModel.scale.set(scale, scale, scale);
 
-                                // モデルの位置を調整（例：原点に配置）
-                                loadedModel.position.set(0, 0, 0);
+                                loadedModel.position.set(params.x, params.y, params.z);
 
                                 // Three.jsのシーンにモデルを追加
                                 scene.add(loadedModel);
@@ -134,14 +164,15 @@ const Viewer = () => {
                                     previousTime = time;
 
                                     if (loadedModel) {
-                                        loadedModel.rotation.y += 0.001;
+                                        loadedModel.rotation.y += params.rotationSpeed;
+                                        loadedModel.position.set(params.x, params.y, params.z);
                                     }
 
                                     controls.update();
                                     renderer.render(scene, camera);
                                 };
 
-                               requestAnimationFrame(animate);
+                                requestAnimationFrame(animate);
                             });
                         }
                     } catch (innerError) {
@@ -180,6 +211,31 @@ const Viewer = () => {
                         // アニメーションミキサーの作成
                         const mixer = new THREE.AnimationMixer(loadedModel);
 
+                        // lilGUIのインスタンス化
+                        const gui = new lil.GUI();
+
+                        const params = {
+                            rotationSpeed: 0.005,
+                            x: 0,
+                            y:  0,
+                            z: 0,
+                        };
+
+                        gui.add(params, "rotationSpeed", 0, 0.1);
+                        gui.add(params, "x", -1, 1);
+                        gui.add(params, "y", -1, 1);
+                        gui.add(params, "z", -1, 1);
+
+                        // GLTFに含まれるすべてのアニメーションをミキサーに追加
+                        const animationFolder = gui.addFolder("Animations");
+                        gltf.animations.forEach((clip, index) => {
+                            const action = mixer.clipAction(clip);
+                            animationFolder.add({ [`Animation ${index}`]: false }, `Animation ${index}`).onChange((play) => {
+                                // アニメーションの再生/停止
+                                play ? action.play() : action.stop();
+                            });
+                        });
+
                         // GLTFに含まれるすべてのアニメーションをミキサーに追加
                         gltf.animations.forEach((clip) => {
                             mixer.clipAction(clip).play();
@@ -215,7 +271,8 @@ const Viewer = () => {
                             previousTime = time;
 
                             if (loadedModel) {
-                                loadedModel.rotation.y += 0.001;
+                                loadedModel.rotation.y += params.rotationSpeed;
+                                loadedModel.position.set(params.x, params.y, params.z);
                             }
 
                             controls.update();
