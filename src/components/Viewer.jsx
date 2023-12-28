@@ -5,7 +5,6 @@ import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader";
 import { AmbientLight, PointLight } from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls";
 import { RGBELoader } from 'three/examples/jsm/loaders/RGBELoader';
-import { UnsignedByteType } from 'three/examples/jsm/loaders/RGBELoader';
 import * as lil from "lil-gui";
 
 const Viewer = () => {
@@ -31,8 +30,9 @@ const Viewer = () => {
         const scene = new THREE.Scene();
 
         const rgbeLoader = new RGBELoader();
-        rgbeLoader.setDataType(UnsignedByteType);
-        rgbeLoader.load("models/background.exr", (texture) => {
+        console.log("rgbeLoader  new!!")
+        rgbeLoader.load("models/bg_sky.pic", (texture) => {
+            console.log("rgbeLoader  load!!")
             texture.mapping = THREE.EquirectangularReflectionMapping;
             scene.background = texture;
             scene.environment = texture;
@@ -125,7 +125,7 @@ const Viewer = () => {
                                 gui.add(params, "y", -1, 1);
                                 gui.add(params, "z", -1, 1);
 
-                                // GLTFに含まれるすべてのアニメーションをミキサーに追加
+                                // GLBに含まれるすべてのアニメーションをミキサーに追加
                                 const animationFolder = gui.addFolder("Animations");
                                 glb.animations.forEach((clip, index) => {
                                     const action = mixer.clipAction(clip);
@@ -217,7 +217,7 @@ const Viewer = () => {
                         const params = {
                             rotationSpeed: 0.005,
                             x: 0,
-                            y: 0,
+                            y:  0,
                             z: 0,
                         };
 
