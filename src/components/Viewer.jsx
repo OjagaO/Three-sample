@@ -4,7 +4,7 @@ import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader";
 import { AmbientLight, PointLight } from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls";
-import { RGBELoader } from 'three/examples/jsm/loaders/RGBELoader';
+import { RGBELoader } from "three/examples/jsm/loaders/RGBELoader";
 import * as lil from "lil-gui";
 
 const Viewer = () => {
@@ -30,9 +30,9 @@ const Viewer = () => {
         const scene = new THREE.Scene();
 
         const rgbeLoader = new RGBELoader();
-        console.log("rgbeLoader  new!!")
+        console.log("rgbeLoader  new!!");
         rgbeLoader.load("models/bg_sky.pic", (texture) => {
-            console.log("rgbeLoader  load!!")
+            console.log("rgbeLoader  load!!");
             texture.mapping = THREE.EquirectangularReflectionMapping;
             scene.background = texture;
             scene.environment = texture;
@@ -118,12 +118,14 @@ const Viewer = () => {
                                     x: 0,
                                     y: 0,
                                     z: 0,
+                                    controls: true,
                                 };
 
                                 gui.add(params, "rotationSpeed", 0, 0.1);
                                 gui.add(params, "x", -1, 1);
                                 gui.add(params, "y", -1, 1);
                                 gui.add(params, "z", -1, 1);
+                                gui.add(params, "controls").name("OrbitControls");
 
                                 // GLBに含まれるすべてのアニメーションをミキサーに追加
                                 const animationFolder = gui.addFolder("Animations");
@@ -168,7 +170,9 @@ const Viewer = () => {
                                         loadedModel.position.set(params.x, params.y, params.z);
                                     }
 
-                                    controls.update();
+                                    if (params.controls) {
+                                        controls.update();
+                                    }
                                     renderer.render(scene, camera);
                                 };
 
@@ -217,7 +221,7 @@ const Viewer = () => {
                         const params = {
                             rotationSpeed: 0.005,
                             x: 0,
-                            y:  0,
+                            y: 0,
                             z: 0,
                         };
 
