@@ -30,9 +30,7 @@ const Viewer = () => {
         const scene = new THREE.Scene();
 
         const rgbeLoader = new RGBELoader();
-        console.log("rgbeLoader  new!!");
         rgbeLoader.load("models/bg_sky.pic", (texture) => {
-            console.log("rgbeLoader  load!!");
             texture.mapping = THREE.EquirectangularReflectionMapping;
             scene.background = texture;
             scene.environment = texture;
@@ -40,7 +38,7 @@ const Viewer = () => {
 
         // camera
         const camera = new THREE.PerspectiveCamera(75, windowSize.width / windowSize.height, 0.1, 1000);
-        camera.position.set(0, 1, 3);
+        camera.position.set(0, 0, 3);
 
         // renderer
         const renderer = new THREE.WebGLRenderer({
@@ -116,24 +114,30 @@ const Viewer = () => {
                                 const params = {
                                     rotationSpeed: 0.005,
                                     x: 0,
-                                    y: 0,
+                                    y: -1,
                                     z: 0,
                                     controls: true,
                                 };
 
                                 gui.add(params, "rotationSpeed", 0, 0.1);
-                                gui.add(params, "x", -1, 1);
-                                gui.add(params, "y", -1, 1);
-                                gui.add(params, "z", -1, 1);
+                                gui.add(params, "x", -1, 1).name("Position X");
+                                gui.add(params, "y", -1, 1).name("Position Y");
+                                gui.add(params, "z", -1, 1).name("Position Z");
                                 gui.add(params, "controls").name("OrbitControls");
+
+                                const cameraGUI = gui.addFolder('Camera')
+
+                                cameraGUI.add(params, 'x').listen().name('Position X')
+                                cameraGUI.add(params, 'y').listen().name('Position X')
+                                cameraGUI.add(params, 'z').listen().name('Position X')
 
                                 // GLBに含まれるすべてのアニメーションをミキサーに追加
                                 const animationFolder = gui.addFolder("Animations");
-                                glb.animations.forEach((clip, index) => {
+                                glb.animations.forEach((clip) => {
                                     const action = mixer.clipAction(clip);
-                                    animationFolder.add({ [`Animation ${index}`]: false }, `Animation ${index}`).onChange((play) => {
+                                    animationFolder.add({ [`Animation`]: false }, `Animation`).onChange((play) => {
                                         // アニメーションの再生/停止
-                                        play ? action.play() : action.stop();
+                                        play ? action.stop() : action.play();
                                     });
                                 });
 
@@ -221,7 +225,7 @@ const Viewer = () => {
                         const params = {
                             rotationSpeed: 0.005,
                             x: 0,
-                            y: 0,
+                            y: -1,
                             z: 0,
                         };
 
@@ -232,9 +236,9 @@ const Viewer = () => {
 
                         // GLTFに含まれるすべてのアニメーションをミキサーに追加
                         const animationFolder = gui.addFolder("Animations");
-                        gltf.animations.forEach((clip, index) => {
+                        gltf.animations.forEach((clip) => {
                             const action = mixer.clipAction(clip);
-                            animationFolder.add({ [`Animation ${index}`]: false }, `Animation ${index}`).onChange((play) => {
+                            animationFolder.add({ [`Animation`]: true }, `Animation`).onChange((play) => {
                                 // アニメーションの再生/停止
                                 play ? action.play() : action.stop();
                             });
@@ -250,10 +254,12 @@ const Viewer = () => {
                         const size = box.getSize(new THREE.Vector3());
 
                         // スケールを調整
-                        const desiredHeight = 1.2; // 目的の高さ
+                        const desiredHeight = 1; // 目的の高さ
+                        console.log("bofore", size);
                         while (size.y < 0.5) {
-                            size.y *= 10;
+                            size.y *= 2;
                         }
+                        console.log("after", size);
                         const scale = desiredHeight / size.y;
                         loadedModel.scale.set(scale, scale, scale);
 
@@ -345,6 +351,7 @@ const Viewer = () => {
 
             const inputArea = document.getElementById("input_area");
             inputArea.style.display = "none";
+            canvas.classList.add("border_none");
         };
 
         // イベントリスナーを追加
@@ -361,8 +368,10 @@ const Viewer = () => {
 
     return (
         <>
-            <div id="input_area">このエリアにファイルまたはフォルダをドラッグ&ドロップしてください</div>
             <canvas id="canvas"></canvas>
+            <div id="input_area">
+                <p className="text_center">黒いエリアにglbファイルまたはフォルダをドラッグ&ドロップしてください</p>
+            </div>
         </>
     );
 };
