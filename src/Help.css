@@ -1,0 +1,51 @@
+li {
+    list-style: none;
+}
+
+.help_box {
+    position: fixed;
+    bottom: 8px;
+    right: 8px;
+    border: 2px solid white;
+    color: white;
+    padding: 6px 8px;
+    background: #000;
+    cursor: pointer;
+}
+
+.modal {
+    background: rgb(255, 255, 255);
+    padding: 16px 0;
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 80%;
+    color: rgb(0, 0, 0);
+    border-radius: 12px;
+}
+
+.modal h3 {
+    display: inline-block;
+    padding: 2px 4px;
+    border: 1px solid rgb(0, 0, 0);
+    margin-bottom: 12px;
+}
+
+.modal p {
+    color: #000;
+}
+
+.modal_content {
+    width: 80%;
+    max-height: 50vh;
+    overflow-y: scroll;
+}
+
+.subtitle {
+    margin: 18px 0 2px;
+    font-weight: bold;
+}

@@ -109,7 +109,7 @@ const Viewer = () => {
                                 const mixer = new THREE.AnimationMixer(loadedModel);
 
                                 // lilGUIのインスタンス化
-                                const gui = new lil.GUI();
+                                const gui = new lil.GUI({ title: 'ここから操作可能です' });
 
                                 const params = {
                                     rotationSpeed: 0.005,
@@ -119,17 +119,17 @@ const Viewer = () => {
                                     controls: true,
                                 };
 
-                                gui.add(params, "rotationSpeed", 0, 0.1);
-                                gui.add(params, "x", -1, 1).name("Position X");
-                                gui.add(params, "y", -1, 1).name("Position Y");
-                                gui.add(params, "z", -1, 1).name("Position Z");
-                                gui.add(params, "controls").name("OrbitControls");
+                                const PositionFolder = gui.addFolder('モデルの位置');
 
-                                const cameraGUI = gui.addFolder('Camera')
+                                gui.add(params, "rotationSpeed", 0, 0.1).name("自動回転速度");
+                                PositionFolder.add(params, "x", -1, 1).name("Position X");
+                                PositionFolder.add(params, "y", -1, 1).name("Position Y");
+                                PositionFolder.add(params, "z", -1, 1).name("Position Z");
 
-                                cameraGUI.add(params, 'x').listen().name('Position X')
-                                cameraGUI.add(params, 'y').listen().name('Position X')
-                                cameraGUI.add(params, 'z').listen().name('Position X')
+                                // OrbitControls のオン・オフを切り替えるコントロールを追加
+                                gui.add(params, "controls").name("マウス操作").onChange(value => {
+                                    controls.enabled = value;
+                                });
 
                                 // GLBに含まれるすべてのアニメーションをミキサーに追加
                                 const animationFolder = gui.addFolder("Animations");
@@ -220,25 +220,32 @@ const Viewer = () => {
                         const mixer = new THREE.AnimationMixer(loadedModel);
 
                         // lilGUIのインスタンス化
-                        const gui = new lil.GUI();
+                                const gui = new lil.GUI({ title: 'ここから操作可能です' });
 
                         const params = {
                             rotationSpeed: 0.005,
                             x: 0,
                             y: -1,
                             z: 0,
+                            controls: true,
                         };
 
-                        gui.add(params, "rotationSpeed", 0, 0.1);
-                        gui.add(params, "x", -1, 1);
-                        gui.add(params, "y", -1, 1);
-                        gui.add(params, "z", -1, 1);
+                        const PositionFolder = gui.addFolder('モデルの位置');
+
+                        gui.add(params, "rotationSpeed", 0, 0.1).name("自動回転速度");;
+                        PositionFolder.add(params, "x", -1, 1).name("Position X");
+                        PositionFolder.add(params, "y", -1, 1).name("Position Y");
+                        PositionFolder.add(params, "z", -1, 1).name("Position Z");
+
+                        // OrbitControls のオン・オフを切り替えるコントロールを追加
+                        gui.add(params, "controls").name("マウス操作").onChange(value => {
+                            controls.enabled = value;
+                        });
 
                         // GLTFに含まれるすべてのアニメーションをミキサーに追加
-                        const animationFolder = gui.addFolder("Animations");
                         gltf.animations.forEach((clip) => {
                             const action = mixer.clipAction(clip);
-                            animationFolder.add({ [`Animation`]: true }, `Animation`).onChange((play) => {
+                            gui.add({ [`Animation`]: true }, `Animation`).onChange((play) => {
                                 // アニメーションの再生/停止
                                 play ? action.play() : action.stop();
                             });
@@ -255,11 +262,9 @@ const Viewer = () => {
 
                         // スケールを調整
                         const desiredHeight = 1; // 目的の高さ
-                        console.log("bofore", size);
                         while (size.y < 0.5) {
                             size.y *= 2;
                         }
-                        console.log("after", size);
                         const scale = desiredHeight / size.y;
                         loadedModel.scale.set(scale, scale, scale);
 
@@ -277,7 +282,7 @@ const Viewer = () => {
                             requestAnimationFrame(animate);
 
                             const deltaTime = (time - previousTime) / 1000; // 秒単位に変換
-                            mixer.update(deltaTime); // アニメーションの更新
+                            mixer.update(deltaTime);
                             previousTime = time;
 
                             if (loadedModel) {
@@ -295,10 +300,6 @@ const Viewer = () => {
             } catch (error) {
                 console.error("Error loading model: ", error);
             }
-        };
-
-        const onDragOver = (event) => {
-            event.preventDefault();
         };
 
         const processEntry = async (entry, fileMap) => {
@@ -331,6 +332,10 @@ const Viewer = () => {
             }
         };
 
+        const onDragOver = (event) => {
+            event.preventDefault();
+        };
+
         const onDrop = async (event) => {
             event.preventDefault();
             const fileMap = new Map();
@@ -355,14 +360,13 @@ const Viewer = () => {
         };
 
         // イベントリスナーを追加
-        const inputCanvas = document.getElementById("canvas");
-        inputCanvas.addEventListener("drop", onDrop);
-        inputCanvas.addEventListener("dragover", onDragOver);
+        document.addEventListener("drop", onDrop);
+        document.addEventListener("dragover", onDragOver);
 
         // クリーンアップ関数
         return () => {
-            inputCanvas.removeEventListener("drop", onDrop);
-            inputCanvas.removeEventListener("dragover", onDragOver);
+            document.removeEventListener("drop", onDrop);
+            document.removeEventListener("dragover", onDragOver);
         };
     }, [windowSize.height, windowSize.width]);
 
