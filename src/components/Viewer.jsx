@@ -30,7 +30,7 @@ const Viewer = () => {
         const scene = new THREE.Scene();
 
         const rgbeLoader = new RGBELoader();
-        rgbeLoader.load("models/bg_sky.pic", (texture) => {
+        rgbeLoader.load("background/bg_sky.pic", (texture) => {
             texture.mapping = THREE.EquirectangularReflectionMapping;
             scene.background = texture;
             scene.environment = texture;
@@ -109,7 +109,7 @@ const Viewer = () => {
                                 const mixer = new THREE.AnimationMixer(loadedModel);
 
                                 // lilGUIのインスタンス化
-                                const gui = new lil.GUI({ title: 'ここから操作可能です' });
+                                const gui = new lil.GUI({ title: "ここから操作可能です" });
 
                                 const params = {
                                     rotationSpeed: 0.005,
@@ -119,7 +119,7 @@ const Viewer = () => {
                                     controls: true,
                                 };
 
-                                const PositionFolder = gui.addFolder('モデルの位置');
+                                const PositionFolder = gui.addFolder("モデルの位置");
 
                                 gui.add(params, "rotationSpeed", 0, 0.1).name("自動回転速度");
                                 PositionFolder.add(params, "x", -1, 1).name("Position X");
@@ -127,17 +127,18 @@ const Viewer = () => {
                                 PositionFolder.add(params, "z", -1, 1).name("Position Z");
 
                                 // OrbitControls のオン・オフを切り替えるコントロールを追加
-                                gui.add(params, "controls").name("マウス操作").onChange(value => {
-                                    controls.enabled = value;
-                                });
+                                gui.add(params, "controls")
+                                    .name("マウス操作")
+                                    .onChange((value) => {
+                                        controls.enabled = value;
+                                    });
 
-                                // GLBに含まれるすべてのアニメーションをミキサーに追加
-                                const animationFolder = gui.addFolder("Animations");
+                                // GLTFに含まれるすべてのアニメーションをミキサーに追加
                                 glb.animations.forEach((clip) => {
                                     const action = mixer.clipAction(clip);
-                                    animationFolder.add({ [`Animation`]: false }, `Animation`).onChange((play) => {
+                                    gui.add({ [`Animation`]: true }, `Animation`).name("アニメーション").onChange((play) => {
                                         // アニメーションの再生/停止
-                                        play ? action.stop() : action.play();
+                                        play ? action.play() : action.stop();
                                     });
                                 });
 
@@ -220,7 +221,7 @@ const Viewer = () => {
                         const mixer = new THREE.AnimationMixer(loadedModel);
 
                         // lilGUIのインスタンス化
-                                const gui = new lil.GUI({ title: 'ここから操作可能です' });
+                        const gui = new lil.GUI({ title: "ここから操作可能です" });
 
                         const params = {
                             rotationSpeed: 0.005,
@@ -230,22 +231,24 @@ const Viewer = () => {
                             controls: true,
                         };
 
-                        const PositionFolder = gui.addFolder('モデルの位置');
+                        const PositionFolder = gui.addFolder("モデルの位置");
 
-                        gui.add(params, "rotationSpeed", 0, 0.1).name("自動回転速度");;
+                        gui.add(params, "rotationSpeed", 0, 0.1).name("自動回転速度");
                         PositionFolder.add(params, "x", -1, 1).name("Position X");
                         PositionFolder.add(params, "y", -1, 1).name("Position Y");
                         PositionFolder.add(params, "z", -1, 1).name("Position Z");
 
                         // OrbitControls のオン・オフを切り替えるコントロールを追加
-                        gui.add(params, "controls").name("マウス操作").onChange(value => {
-                            controls.enabled = value;
-                        });
+                        gui.add(params, "controls")
+                            .name("マウス操作")
+                            .onChange((value) => {
+                                controls.enabled = value;
+                            });
 
                         // GLTFに含まれるすべてのアニメーションをミキサーに追加
                         gltf.animations.forEach((clip) => {
                             const action = mixer.clipAction(clip);
-                            gui.add({ [`Animation`]: true }, `Animation`).onChange((play) => {
+                            gui.add({ [`Animation`]: true }, `Animation`).name("アニメーション").onChange((play) => {
                                 // アニメーションの再生/停止
                                 play ? action.play() : action.stop();
                             });
@@ -334,6 +337,10 @@ const Viewer = () => {
 
         const onDragOver = (event) => {
             event.preventDefault();
+            const dragModal = document.getElementById("drag_modal");
+            const inputArea = document.getElementById("input_area");
+            inputArea.style.display = "none";
+            dragModal.classList.add("active");
         };
 
         const onDrop = async (event) => {
@@ -354,9 +361,9 @@ const Viewer = () => {
             await Promise.all(promises);
             await loadModel(fileMap);
 
-            const inputArea = document.getElementById("input_area");
-            inputArea.style.display = "none";
+            const dragModal = document.getElementById("drag_modal");
             canvas.classList.add("border_none");
+            dragModal.classList.remove("active");
         };
 
         // イベントリスナーを追加

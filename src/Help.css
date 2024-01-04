@@ -26,6 +26,7 @@ li {
     width: 80%;
     color: rgb(0, 0, 0);
     border-radius: 12px;
+    max-width: 720px;
 }
 
 .modal h3 {
@@ -46,6 +47,6 @@ li {
 }
 
 .subtitle {
-    margin: 18px 0 2px;
+    margin: 16px 0 4px;
     font-weight: bold;
 }
